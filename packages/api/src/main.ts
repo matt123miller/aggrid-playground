@@ -6,7 +6,6 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 import express from 'express';
-import bodyParser from 'body-parser';
 import cors from 'cors';
 import * as path from 'path';
 
@@ -17,8 +16,8 @@ const port = process.env.PORT || 3333;
 const app = express();
 
 app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: false }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 

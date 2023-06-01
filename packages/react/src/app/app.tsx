@@ -5,6 +5,8 @@ import {
   CellClickedEvent,
   ColDef,
   GridOptions,
+  IDatasource,
+  IGetRowsParams,
 } from 'ag-grid-community';
 import { AgGridReact } from 'ag-grid-react';
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
@@ -15,6 +17,8 @@ import 'ag-grid-community/styles/ag-theme-alpine.css';
 
 const App = () => {
   const gridRef = useRef(null); // Optional - for accessing Grid's API
+
+  const datasource = useMemo(createDatasource, []);
 
   const createUserMutation = useMutation(
     () => {
@@ -48,15 +52,10 @@ const App = () => {
   const gridOptions: GridOptions = {
     rowModelType: 'infinite',
     getRowId: (row) => row.userId,
-    datasource: {
-      getRows: async (params) => {
-        console.log(params);
-
-        const results = await fetch('http://localhost:4100/api/users');
-        const json = await results.json();
-        params.successCallback(json, json.length);
-      },
-    },
+    debug: true,
+    cacheBlockSize: 20,
+    maxBlocksInCache: 2,
+    datasource,
   };
 
   // Each Column Definition results in one Column.
@@ -104,3 +103,32 @@ const App = () => {
 };
 
 export default App;
+
+function createDatasource(): IDatasource {
+  return {
+    getRows: async (params: IGetRowsParams) => {
+      console.log(params);
+
+      const { startRow, endRow, filterModel, sortModel } = params;
+
+      const queryUrl = new URL('http://localhost:4100/api/users');
+
+      queryUrl.searchParams.set('startRow', startRow.toString());
+      queryUrl.searchParams.set('endRow', endRow.toString());
+      if (sortModel.length > 0) {
+        const { colId, sort } = sortModel[0]!;
+        queryUrl.searchParams.set('sortDir', sort);
+        queryUrl.searchParams.set('sortColumn', colId);
+      }
+      for (const key in filterModel) {
+        const { filterType, filter, type } = filterModel[key];
+        console.log({ key, filterType, filter, type });
+        queryUrl.searchParams.set(key, JSON.stringify(filterModel[key]));
+      }
+
+      const results = await fetch(queryUrl);
+      const json = await results.json();
+      params.successCallback(json, json.length);
+    },
+  };
+}
